@@ -3,15 +3,12 @@ import { useEffect, useState, useRef } from 'react';
 import { IconButton, TextInput, MD3DarkTheme, Portal, Text, Modal, Dialog } from 'react-native-paper';
 import { MMKV } from 'react-native-mmkv';
 
-const AddNFCModal = ({ visible, hideModal }: { visible: boolean, hideModal: () => void }) => {
+const AddNFCModal = ({ visible, hideModal, homePageRefresh }: { visible: boolean, hideModal: () => void, homePageRefresh: React.Dispatch<React.SetStateAction<boolean>> }) => {
 
   const [ newMachineName, setNewMachineName ] = useState<string>('');
   const [ newMachineManualURL, setNewMachineManualURL ] = useState<string>('');
-  const [ newMachineServiceRecord, setNewMachineServiceRecord ] = useState<string[]>([
-    "30.01.2025", "30.01.2026", "30.01.2027"
-  ]);
-  const [newMachineLastServiceDate, setNewMachineLastServiceDate] = useState('');
-  const [dialogVisible, setDialogVisible] = useState(false);
+  const [ newMachineLastServiceDate, setNewMachineLastServiceDate ] = useState<string>('');
+  const [ dialogVisible, setDialogVisible ] = useState(false);
 
   const showDialog = () => setDialogVisible(true);
   const hideDialog = () => setDialogVisible(false);
@@ -35,7 +32,7 @@ const AddNFCModal = ({ visible, hideModal }: { visible: boolean, hideModal: () =
             cursorColor={MD3DarkTheme.colors.onSurface}
             textColor={MD3DarkTheme.colors.onSurface}
             style={styles.inputField}
-            value={newMachineName}
+            // value={newMachineName} // slows down the input
             onChangeText={(text) => setNewMachineName(text)}
           />
           <TextInput
@@ -50,7 +47,7 @@ const AddNFCModal = ({ visible, hideModal }: { visible: boolean, hideModal: () =
             cursorColor={MD3DarkTheme.colors.onSurface}
             textColor={MD3DarkTheme.colors.onSurface}
             style={styles.inputField}
-            value={newMachineManualURL}
+            // value={newMachineManualURL} // slows down the input
             onChangeText={(text) => setNewMachineManualURL(text)}
           />
           <TextInput
@@ -65,7 +62,7 @@ const AddNFCModal = ({ visible, hideModal }: { visible: boolean, hideModal: () =
             cursorColor={MD3DarkTheme.colors.onSurface}
             textColor={MD3DarkTheme.colors.onSurface}
             style={styles.inputField}
-            value={newMachineLastServiceDate}
+            // value={newMachineLastServiceDate} // slows down the input
             onChangeText={(text) => setNewMachineLastServiceDate(text)}
           />
         </View>
@@ -103,7 +100,10 @@ const AddNFCModal = ({ visible, hideModal }: { visible: boolean, hideModal: () =
                 id: newId, 
                 machine_name: newMachineName, 
                 manual_url: newMachineManualURL, 
-                service_record: [newMachineLastServiceDate] 
+                service_record: [{
+                  id: Date.now(),
+                  service_date: newMachineLastServiceDate
+                }] 
               };
 
               // add just the new tag object to the list
@@ -116,6 +116,9 @@ const AddNFCModal = ({ visible, hideModal }: { visible: boolean, hideModal: () =
 
               // close the modal
               hideModal();
+
+              // refresh the home page
+              homePageRefresh(true);
             }}
           />
         </View>

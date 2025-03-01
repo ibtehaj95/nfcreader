@@ -6,6 +6,7 @@ export default function RootLayout() {
     <PaperProvider>
       <Stack  screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />
+        <Stack.Screen name="nfctags/[id]" />
         <Stack.Screen name="+not-found" />
       </Stack>
     </PaperProvider>

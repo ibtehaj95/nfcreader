@@ -2,7 +2,7 @@ import { View, StyleSheet, StatusBar, StatusBarStyle } from "react-native";
 import NFCTAGSLISTSTATIC from "@/assets/static-data/nfc-sample-data";
 import { useEffect, useState } from "react";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
-import { List, IconButton, MD3DarkTheme } from 'react-native-paper';
+import { List, IconButton, MD3DarkTheme, Appbar } from 'react-native-paper';
 import { LinearTransition } from 'react-native-reanimated';
 import Animated from 'react-native-reanimated';
 import { MMKV } from 'react-native-mmkv';
@@ -13,6 +13,8 @@ export default function Index() {
 
   const [ nfcTagsList, setNFCTagsList ] = useState<NFCTagsListType>([]);
   const [ visible, setVisible ] = useState<boolean>(false);
+  const [ nfcTagsListUpdated, setNfcTagsListUpdated ] = useState<boolean>(false);
+
   const [ statusBarStyle ] = useState<StatusBarStyle>("dark-content");
 
   const storage = new MMKV();
@@ -23,23 +25,35 @@ export default function Index() {
   useEffect(() => {
     console.log(nfcTagsList);
   }, [nfcTagsList]);
+
+  useEffect(() => {
+    if (nfcTagsListUpdated === true) {
+      console.log("List Updated");
+
+      let nfcTagsLocalList: NFCTagsListType = [];
+
+      // get all persisted keys
+      const keys = storage.getAllKeys();
+
+      // iterate over keys and append the value to the local variable
+      keys.forEach((key) => {
+        const value = storage.getString(key);
+        if (typeof(value) === 'string') {
+          const nfcDataObj = JSON.parse(value);
+          // console.log(nfcDataObj);
+          nfcTagsLocalList.push(nfcDataObj);
+        }
+      });
+
+      // set the local variable to the state variable
+      setNFCTagsList(nfcTagsLocalList);
+
+      setNfcTagsListUpdated(false);
+    }
+  }, [nfcTagsListUpdated]);
   
   useEffect(() => {
-
-    console.log(NFCTAGSLISTSTATIC);
-    if (NFCTAGSLISTSTATIC.length > 0) {
-      setNFCTagsList(NFCTAGSLISTSTATIC);
-    }
-
-    const keys = storage.getAllKeys();
-
-    keys.forEach((key) => {
-      const value = storage.getString(key);
-      if (typeof(value) === 'string') {
-        const nfcDataObj = JSON.parse(value);
-        console.log(nfcDataObj);
-      }
-    });
+    setNfcTagsListUpdated(true);
   }, []);
 
   return (
@@ -48,6 +62,9 @@ export default function Index() {
       <StatusBar
         barStyle={statusBarStyle}
       />
+      <Appbar.Header>
+          <Appbar.Content title="NFC Tags List" titleStyle={styles.appBar} />
+      </Appbar.Header>
       <View style={styles.listContainer}>
         <Animated.FlatList
           data={nfcTagsList}
@@ -60,16 +77,7 @@ export default function Index() {
 
               onPress={() => {
                 console.log(`${item.machine_name} pressed with id ${item.id}`);
-                // const findItemIndex = list.findIndex((listItem) => listItem.id === item.id);
-                // const newItem = list[findItemIndex];
-                // newItem.completed = !newItem.completed;
-                // storage.set(`${item.id}`, JSON.stringify(newItem));
-                // setListUpdated(true);
-              }}
-
-              onLongPress={() => {
-                console.log(`${item.machine_name} long pressed with id ${item.id}`);
-                // router.push({ pathname: "/todos/[id]", params: { id: item.id } });
+                router.push({ pathname: "/nfctags/[id]", params: { id: item.id } });
               }}
 
               right={
@@ -80,10 +88,8 @@ export default function Index() {
                     size={25} 
                     onPress={() => {
                       console.log(`${item.machine_name} with id ${item.id} deleted`);
-                      // storage.delete(`${item.id}`);
-                      // setListUpdated(true);
-                      // const newList = list.filter((listItem) => listItem.id !== item.id);
-                      // setList(newList);
+                      storage.delete(`${item.id}`);
+                      setNfcTagsListUpdated(true);
                     }}
                   />
               }
@@ -109,13 +115,16 @@ export default function Index() {
             }}
           />
         </View>
-        <AddNFCModal visible={visible} hideModal={hideModal} />
+        <AddNFCModal visible={visible} hideModal={hideModal} homePageRefresh={setNfcTagsListUpdated} />
       </SafeAreaView>
     </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
+  appBar: {
+    textAlign: 'left',
+  },
   background: {
     backgroundColor: MD3DarkTheme.colors.surface,
     flex: 1,
