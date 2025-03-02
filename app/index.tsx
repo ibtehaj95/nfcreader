@@ -8,19 +8,25 @@ import Animated from 'react-native-reanimated';
 import { MMKV } from 'react-native-mmkv';
 import { router } from 'expo-router';
 import AddNFCModal from "@/components/AddNFCModal";
+import NFCTagScan from "@/components/NFCTagScan";
 
 export default function Index() {
 
   const [ nfcTagsList, setNFCTagsList ] = useState<NFCTagsListType>([]);
-  const [ visible, setVisible ] = useState<boolean>(false);
+  const [ addNFCManualModalVisible, setAddNFCManualModalVisible ] = useState<boolean>(false);
   const [ nfcTagsListUpdated, setNfcTagsListUpdated ] = useState<boolean>(false);
+  const [ scanNFCModalVisible, setScanNFCModalVisible ] = useState<boolean>(false);
+  const [ renderNFCScanComponent, setRenderNFCScanComponent ] = useState<boolean>(false);
 
   const [ statusBarStyle ] = useState<StatusBarStyle>("dark-content");
 
   const storage = new MMKV();
 
-  const showModal = () => setVisible(true);
-  const hideModal = () => setVisible(false);
+  const addNFCManualShowModal = () => setAddNFCManualModalVisible(true);
+  const hideNFCManualShowModal = () => setAddNFCManualModalVisible(false);
+
+  const scanNFCShowModal = () => setScanNFCModalVisible(true);
+  const scanNFCHideModal = () => setScanNFCModalVisible(false);
 
   useEffect(() => {
     console.log(nfcTagsList);
@@ -107,7 +113,23 @@ export default function Index() {
             size={30} 
             onPress={() => {
               console.log(`Manually Add`);
-              showModal();
+              addNFCManualShowModal();
+              // storage.delete(`${item.id}`);
+              // setListUpdated(true);
+              // const newList = list.filter((listItem) => listItem.id !== item.id);
+              // setList(newList);
+            }}
+          />
+          <IconButton
+            icon="nfc-search-variant" 
+            mode="contained"
+            iconColor={MD3DarkTheme.colors.onSurface}
+            containerColor={MD3DarkTheme.colors.outline}
+            size={30} 
+            onPress={() => {
+              console.log(`Scan NFC`);
+              scanNFCShowModal();
+              setRenderNFCScanComponent(true);
               // storage.delete(`${item.id}`);
               // setListUpdated(true);
               // const newList = list.filter((listItem) => listItem.id !== item.id);
@@ -115,7 +137,8 @@ export default function Index() {
             }}
           />
         </View>
-        <AddNFCModal visible={visible} hideModal={hideModal} homePageRefresh={setNfcTagsListUpdated} />
+        <AddNFCModal visible={addNFCManualModalVisible} hideModal={hideNFCManualShowModal} homePageRefresh={setNfcTagsListUpdated} />
+        {renderNFCScanComponent && <NFCTagScan visible={scanNFCModalVisible} hideModal={scanNFCHideModal} renderComponent={setRenderNFCScanComponent} homePageRefresh={setNfcTagsListUpdated} />}
       </SafeAreaView>
     </SafeAreaProvider>
   );

@@ -16,7 +16,10 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.anonymous.nfcreader"
+      "package": "com.anonymous.nfcreader",
+      "permissions": [
+        "android.permission.NFC"
+      ]
     },
     "web": {
       "bundler": "metro",
