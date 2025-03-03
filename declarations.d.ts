@@ -1,13 +1,19 @@
+type IDType = string;
+type MachineNameType = string;
+type ManualURLType = string;
+type ServiceDateType = string;
+type ServiceRecordIDType = number;
+
+type NFCTagServiceRecordType = {
+    id: ServiceRecordIDType;
+    service_date: ServiceDateType;
+};
+
 type NFCTagDataType =  {
-    id: number;
-    machine_name: string;
-    manual_url: string;
+    id: IDType;
+    machine_name: MachineNameType;
+    manual_url: ManualURLType;
     service_record: NFCTagServiceRecordType[];
 };
 
 type NFCTagsListType = NFCTagData[];
-
-type NFCTagServiceRecordType = {
-    id: number;
-    service_date: string;
-};

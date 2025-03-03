@@ -1,4 +1,4 @@
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, FlatList } from 'react-native';
 import { useEffect, useState, useRef } from 'react';
 import { IconButton, TextInput, MD3DarkTheme, Portal, Text, Modal, Dialog, Card } from 'react-native-paper';
 import { MMKV } from 'react-native-mmkv';
@@ -6,20 +6,31 @@ import NfcManager, {NfcTech} from 'react-native-nfc-manager';
 
 const NFCTagScan = ({ visible, hideModal, renderComponent, homePageRefresh }: { visible: boolean, hideModal: () => void, renderComponent: React.Dispatch<React.SetStateAction<boolean>>, homePageRefresh: React.Dispatch<React.SetStateAction<boolean>> }) => {
 
-  const [ newMachineName, setNewMachineName ] = useState<string>('');
-  const [ newMachineManualURL, setNewMachineManualURL ] = useState<string>('');
-  const [ newMachineLastServiceDate, setNewMachineLastServiceDate ] = useState<string>('');
-  const [ dialogVisible, setDialogVisible ] = useState(false);
+  const [ tagID, setTagID ] = useState<IDType>("");
+  const [ machineName, setMachineName ] = useState<MachineNameType>('');
+  const [ machineManualURL, setMachineManualURL ] = useState<ManualURLType>('');
+  const [ machineSericeRecord, setMachineServiceRecord ] = useState<NFCTagServiceRecordType[]>([]);
   const [ readingNFC, setReadingNFC ] = useState<boolean>(false);
   const [ nfcTagData, setNFCTagData ] = useState<string>('');
-
-  const showDialog = () => setDialogVisible(true);
-  const hideDialog = () => setDialogVisible(false);
+  const [ tagRead, setTagRead ] = useState<boolean>(false);
+  const [ noNFCAvailable, setNoNFCAvailable ] = useState<boolean>(false);
 
   const storage = new MMKV();
 
   const readNFC = async () => {
     console.log("Reading NFC");
+    
+    const NFCEnabled = await NfcManager.isEnabled(); // check if NFC is enabled
+    const NFCSupported = await NfcManager.isSupported(); // check if device supports NFC
+
+    if(NFCEnabled && NFCSupported){
+      setNoNFCAvailable(false);
+    }
+    else{
+      setNoNFCAvailable(true);
+      return;
+    }
+
     setReadingNFC(true);
 
     let nfcDataLocal: string = '';
@@ -31,15 +42,23 @@ const NFCTagScan = ({ visible, hideModal, renderComponent, homePageRefresh }: { 
       await NfcManager.requestTechnology(NfcTech.Ndef);
       // the resolved tag object will contain `ndefMessage` property
       const tag = await NfcManager.getTag();
-      console.warn('Tag found', tag);
+      // console.warn('Tag found', tag);
+
       if(tag !== null && tag.ndefMessage){
         const ndefData = tag.ndefMessage[0].payload;
         ndefData.forEach((byte: number) => {
-          nfcDataLocal += String.fromCharCode(byte);
+          if(byte>32 && byte<127){
+            nfcDataLocal += String.fromCharCode(byte);
+          }
         });
         // console.log(nfcDataLocal);
       }
       setNFCTagData(nfcDataLocal);
+
+      if(tag !== null && tag.id){
+        // console.log("Tag ID: ", tag.id);
+        setTagID(tag.id);
+      }
     } 
     catch (ex) {
       console.warn('Oops!', ex);
@@ -60,11 +79,46 @@ const NFCTagScan = ({ visible, hideModal, renderComponent, homePageRefresh }: { 
   }, [readingNFC]);
 
   useEffect(() => {
-    console.log("NFC Data: ", nfcTagData);
+    // console.log("NFC Data JSON: ", nfcTagData);
+    const nfcTagDataLocal:string = nfcTagData.slice(2);
+    if(nfcTagDataLocal){
+      try{
+
+        const nfcDataObj = JSON.parse(nfcTagDataLocal);
+        // console.log("NFC Data Object: ", nfcDataObj);
+
+        setMachineName(nfcDataObj.name);
+        setMachineManualURL(nfcDataObj.manual_url);
+        // console.log("Service Record: ", nfcDataObj.service_record);
+        
+        let serviceRecord: NFCTagServiceRecordType[] = [];
+        
+        if(nfcDataObj.service_record.length > 0){
+          nfcDataObj.service_record.forEach((serviceRecordElem: string) => {
+            const serviceRecordItem: NFCTagServiceRecordType = {
+              id: Math.floor(Math.random()*10000),
+              service_date: serviceRecordElem,
+            }
+            serviceRecord.push(serviceRecordItem);
+          });
+          setMachineServiceRecord(serviceRecord);
+        }
+        else{
+          setMachineServiceRecord([]);
+        }
+      }
+      catch(ex){
+        console.log("Error parsing JSON: ", ex);
+      }
+      finally{
+        setTagRead(true);
+        setReadingNFC(false);
+      }
+    }
   }, [nfcTagData]);
 
   useEffect(() => {
-    console.log("NFCTagScan mounted");
+    // console.log("NFCTagScan mounted");
     readNFC();
   }, []);
   
@@ -77,11 +131,49 @@ const NFCTagScan = ({ visible, hideModal, renderComponent, homePageRefresh }: { 
           renderComponent(false);
         }}
         contentContainerStyle={styles.modalStyle}>
-        <Card style={styles.card}>
-          <Card.Content>
-            <Text variant="titleMedium" style = { styles.headerText }>Scanning NFC</Text>
-          </Card.Content>
-        </Card>
+          {tagRead === false ?
+            (noNFCAvailable === true?
+              <Card style={styles.noNFC}>
+              <Card.Content>
+                <Text variant="titleMedium" style = { styles.headerText }>No NFC. Please enable and tap icon on home screen again</Text>
+              </Card.Content>
+            </Card>:  
+            <Card style={styles.scanCard}>
+              <Card.Content>
+                <Text variant="titleMedium" style = { styles.headerText }>Scanning NFC ...</Text>
+              </Card.Content>
+            </Card>):
+              <Card style={styles.dataDisplayCard}>
+                <Card.Content>
+                  <View style={styles.tagID}>
+                    <Text variant="titleMedium" style= {styles.tagAttribute}>Tag ID</Text>
+                    <Text variant="titleMedium" style= {styles.tagValue}>{tagID}</Text>
+                  </View>
+                  <View style={styles.machineName}>
+                    <Text variant="titleMedium" style= {styles.tagAttribute}>Machine Name</Text>
+                    <Text variant="titleMedium" style= {styles.tagValue}>{machineName}</Text>
+                  </View>
+                  <View style={styles.machineName}>
+                    <Text variant="titleMedium" style= {styles.tagAttribute}>Machine Manual URL</Text>
+                    <Text variant="titleMedium" style= {styles.tagValue}>{machineManualURL}</Text>
+                  </View>
+                  <View style={styles.serviceRecord}>
+                    <Text variant="titleMedium" style= {styles.tagAttribute}>Service Record</Text>
+                      <View style={styles.serviceRecordList}>
+                      <FlatList
+                        data={machineSericeRecord}
+                        keyExtractor={item => item.id.toString()}
+                        renderItem={({item}) => 
+                          <View>
+                            <Text variant="titleMedium" style= {styles.tagValue}>{item.service_date}</Text>
+                          </View>
+                        }
+                      />
+                      </View>
+                  </View>
+                </Card.Content>
+              </Card>
+          }
         <View style={styles.buttonsContainer}>
           <IconButton
             icon="cancel" 
@@ -91,60 +183,42 @@ const NFCTagScan = ({ visible, hideModal, renderComponent, homePageRefresh }: { 
             size={25}
             onPress={() => {
               console.log(`Cancel`);
-              // setNewMachineName('');
-              // setNewMachineManualURL('');
-              // setNewMachineLastServiceDate('');
+              hideModal();
+              renderComponent(false);
             }}
           />
           <IconButton
             icon="database-plus" 
             mode='contained'
+            disabled={!tagRead}
             iconColor={MD3DarkTheme.colors.surface}
             containerColor={MD3DarkTheme.colors.onSurface}
             size={25}
             onPress={() => {
               console.log(`Save to DB`);
 
-              // if(newMachineName === '' || newMachineManualURL === '' || newMachineLastServiceDate === ''){
-              //   showDialog();
-              //   return;
-              // }
+              // create a new NFC tag object
+              const newTagObj:NFCTagDataType = { 
+                id: tagID,
+                machine_name: machineName,
+                manual_url: machineManualURL,
+                service_record: machineSericeRecord,
+              };
 
-              // // create a new NFC tag object
-              // const newId = Date.now();
-              // const newTaskItem:NFCTagDataType = { 
-              //   id: newId, 
-              //   machine_name: newMachineName, 
-              //   manual_url: newMachineManualURL, 
-              //   service_record: [{
-              //     id: Date.now(),
-              //     service_date: newMachineLastServiceDate
-              //   }] 
-              // };
+              // add just the new tag object to the list
+              storage.set(`${tagID}`, JSON.stringify(newTagObj));
 
-              // // add just the new tag object to the list
-              // storage.set(`${newId}`, JSON.stringify(newTaskItem));
-              
-              // // clear the input fields
-              // setNewMachineName('');
-              // setNewMachineManualURL('');
-              // setNewMachineLastServiceDate('');
+              // close the modal
+              hideModal();
 
-              // // close the modal
-              // hideModal();
+              // refresh the home page
+              homePageRefresh(true);
 
-              // // refresh the home page
-              // homePageRefresh(true);
+              // dismount the component
+              renderComponent(false);
             }}
           />
         </View>
-        <Portal>
-          <Dialog visible={dialogVisible} onDismiss={hideDialog}>
-            <Dialog.Content>
-              <Text variant="bodyMedium" style = { styles.dialogContainer }>Please enable NFC!</Text>
-            </Dialog.Content>
-          </Dialog>
-        </Portal>
       </Modal>
     </Portal>
   )
@@ -152,7 +226,8 @@ const NFCTagScan = ({ visible, hideModal, renderComponent, homePageRefresh }: { 
 
 const styles = StyleSheet.create({
   modalStyle: {
-    // flex: 0.4,
+    // flex: 0.6,
+    maxHeight: 1000,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: MD3DarkTheme.colors.surface,
@@ -160,34 +235,50 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
   },
   headerText: {
-    marginTop: 8,
-    marginBottom: 2,
     color: MD3DarkTheme.colors.onSurface,
-  },
-  inputContainer: {
-    // flex: 0.4,
-    width: '100%',
-    flexDirection: 'column',
-    paddingHorizontal: 6,
-    // justifyContent: 'space-between',
-    // alignItems: 'center',
-    marginTop: 6,
-    marginBottom: 4,
-  },
-  inputField: {
-    backgroundColor: MD3DarkTheme.colors.surfaceVariant,
-    marginHorizontal: 4,
-    marginVertical: 4,
   },
   buttonsContainer: {
     flexDirection: 'row',
   },
-  dialogContainer: {
-    color: MD3DarkTheme.colors.onSurface,
-  },
-  card: {
+  scanCard: {
     margin: 20,
     backgroundColor: MD3DarkTheme.colors.surfaceVariant,
+  },
+  noNFC: {
+    margin: 20,
+    backgroundColor: MD3DarkTheme.colors.surfaceVariant,
+  },
+  dataDisplayCard: {
+    marginVertical: 20,
+    // flex: 1,
+    backgroundColor: MD3DarkTheme.colors.surfaceVariant,
+  },
+  tagID: {
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+  },
+  machineName: {
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+  },
+  machineURL: {
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+  },
+  serviceRecord: {
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+  },
+  serviceRecordList: {
+    maxHeight: 100,
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+  },
+  tagAttribute: {
+    color: MD3DarkTheme.colors.onSurfaceVariant,
+  },
+  tagValue: {
+    color: MD3DarkTheme.colors.onSurface,
   },
 });
 

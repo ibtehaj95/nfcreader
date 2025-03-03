@@ -5,9 +5,9 @@ import { MMKV } from 'react-native-mmkv';
 
 const AddNFCModal = ({ visible, hideModal, homePageRefresh }: { visible: boolean, hideModal: () => void, homePageRefresh: React.Dispatch<React.SetStateAction<boolean>> }) => {
 
-  const [ newMachineName, setNewMachineName ] = useState<string>('');
-  const [ newMachineManualURL, setNewMachineManualURL ] = useState<string>('');
-  const [ newMachineLastServiceDate, setNewMachineLastServiceDate ] = useState<string>('');
+  const [ newMachineName, setNewMachineName ] = useState<MachineNameType>('');
+  const [ newMachineManualURL, setNewMachineManualURL ] = useState<ManualURLType>('');
+  const [ newMachineLastServiceDate, setNewMachineLastServiceDate ] = useState<ServiceDateType>('');
   const [ dialogVisible, setDialogVisible ] = useState(false);
 
   const showDialog = () => setDialogVisible(true);
@@ -95,7 +95,7 @@ const AddNFCModal = ({ visible, hideModal, homePageRefresh }: { visible: boolean
               }
 
               // create a new NFC tag object
-              const newId = Date.now();
+              const newId = Date.now().toString();
               const newTaskItem:NFCTagDataType = { 
                 id: newId, 
                 machine_name: newMachineName, 

@@ -7,12 +7,12 @@ import { router, useLocalSearchParams } from 'expo-router';
 
 const NFCDetails = () => {
 
-  const [ nfcTagID, setNfcTagID ] = useState<number>(0);
-  const [ machineName, setMachineName ] = useState<string>('');
-  const [ machineManualURL, setMachineManualURL ] = useState<string>('');
+  const [ nfcTagID, setNfcTagID ] = useState<IDType>("");
+  const [ machineName, setMachineName ] = useState<MachineNameType>("");
+  const [ machineManualURL, setMachineManualURL ] = useState<ManualURLType>("");
   const [ machineSericeRecord, setMachineSericeRecord ] = useState<NFCTagServiceRecordType[]>([{
     id: 0,
-    service_date: '',
+    service_date: "",
   }]);
 
   const storage = new MMKV();
@@ -27,7 +27,7 @@ const NFCDetails = () => {
         const savedNfcObj = JSON.parse(savedNfcDetailsString);
         console.log(savedNfcObj);
         
-        if (typeof(savedNfcObj.id) === 'number' && typeof(savedNfcObj.machine_name) === 'string' && typeof(savedNfcObj.manual_url) === 'string') {
+        if (typeof(savedNfcObj.id) === 'string' && typeof(savedNfcObj.machine_name) === 'string' && typeof(savedNfcObj.manual_url) === 'string') {
           
           setNfcTagID(savedNfcObj.id);
           setMachineName(savedNfcObj.machine_name);
