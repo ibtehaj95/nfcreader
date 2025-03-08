@@ -7,6 +7,8 @@ export default function RootLayout() {
       <Stack  screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="nfctags/[id]" />
+        <Stack.Screen name="nfctagscanlink" />
+        <Stack.Screen name="callnfcweb" />
         <Stack.Screen name="+not-found" />
       </Stack>
     </PaperProvider>

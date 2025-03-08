@@ -2,7 +2,7 @@ import { View, StyleSheet, StatusBar, StatusBarStyle } from "react-native";
 import NFCTAGSLISTSTATIC from "@/assets/static-data/nfc-sample-data";
 import { useEffect, useState } from "react";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
-import { List, IconButton, MD3DarkTheme, Appbar } from 'react-native-paper';
+import { List, IconButton, MD3DarkTheme, Appbar, Button } from 'react-native-paper';
 import { LinearTransition } from 'react-native-reanimated';
 import Animated from 'react-native-reanimated';
 import { MMKV } from 'react-native-mmkv';
@@ -114,10 +114,6 @@ export default function Index() {
             onPress={() => {
               console.log(`Manually Add`);
               addNFCManualShowModal();
-              // storage.delete(`${item.id}`);
-              // setListUpdated(true);
-              // const newList = list.filter((listItem) => listItem.id !== item.id);
-              // setList(newList);
             }}
           />
           <IconButton
@@ -130,10 +126,6 @@ export default function Index() {
               console.log(`Scan NFC`);
               scanNFCShowModal();
               setRenderNFCScanComponent(true);
-              // storage.delete(`${item.id}`);
-              // setListUpdated(true);
-              // const newList = list.filter((listItem) => listItem.id !== item.id);
-              // setList(newList);
             }}
           />
         </View>

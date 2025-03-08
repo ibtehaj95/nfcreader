@@ -1,10 +1,12 @@
-import { View, StyleSheet, FlatList } from 'react-native';
+import { View, StyleSheet, FlatList, StatusBar, StatusBarStyle, Linking, Platform } from "react-native";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { useEffect, useState } from 'react';
-import { IconButton, MD3DarkTheme, Portal, Text, Modal, Card } from 'react-native-paper';
+import { MD3DarkTheme, Text, Card, Appbar, Button } from 'react-native-paper';
 import { MMKV } from 'react-native-mmkv';
 import NfcManager, {NfcTech} from 'react-native-nfc-manager';
+import { router, useLocalSearchParams } from 'expo-router';
 
-const NFCTagScan = ({ visible, hideModal, renderComponent, homePageRefresh }: { visible: boolean, hideModal: () => void, renderComponent: React.Dispatch<React.SetStateAction<boolean>>, homePageRefresh: React.Dispatch<React.SetStateAction<boolean>> }) => {
+const NFCTagScanLink = () => {
 
   const [ tagID, setTagID ] = useState<IDType>("");
   const [ machineName, setMachineName ] = useState<MachineNameType>('');
@@ -15,9 +17,12 @@ const NFCTagScan = ({ visible, hideModal, renderComponent, homePageRefresh }: { 
   const [ tagRead, setTagRead ] = useState<boolean>(false);
   const [ noNFCAvailable, setNoNFCAvailable ] = useState<boolean>(false);
 
-  const storage = new MMKV();
+  const [ statusBarStyle ] = useState<StatusBarStyle>("dark-content");
+
+  const { caller } = useLocalSearchParams();
 
   const readNFC = async () => {
+
     console.log("Reading NFC");
     
     const NFCEnabled = await NfcManager.isEnabled(); // check if NFC is enabled
@@ -79,8 +84,14 @@ const NFCTagScan = ({ visible, hideModal, renderComponent, homePageRefresh }: { 
   }, [readingNFC]);
 
   useEffect(() => {
+
     // console.log("NFC Data JSON: ", nfcTagData);
     const nfcTagDataLocal:string = nfcTagData.slice(2);
+
+    let localMachineName: MachineNameType = '';
+    let localMachineManualURL: ManualURLType = '';
+    let localMachineServiceRecord = '';
+
     if(nfcTagDataLocal){
       try{
 
@@ -88,7 +99,9 @@ const NFCTagScan = ({ visible, hideModal, renderComponent, homePageRefresh }: { 
         // console.log("NFC Data Object: ", nfcDataObj);
 
         setMachineName(nfcDataObj.name);
+        localMachineName = nfcDataObj.name;
         setMachineManualURL(nfcDataObj.manual_url);
+        localMachineManualURL = nfcDataObj.manual_url;
         // console.log("Service Record: ", nfcDataObj.service_record);
         
         let serviceRecord: NFCTagServiceRecordType[] = [];
@@ -100,6 +113,7 @@ const NFCTagScan = ({ visible, hideModal, renderComponent, homePageRefresh }: { 
               service_date: serviceRecordElem,
             }
             serviceRecord.push(serviceRecordItem);
+            localMachineServiceRecord += "d=" + serviceRecordElem;
           });
           setMachineServiceRecord(serviceRecord);
         }
@@ -113,29 +127,42 @@ const NFCTagScan = ({ visible, hideModal, renderComponent, homePageRefresh }: { 
       finally{
         setTagRead(true);
         setReadingNFC(false);
+        console.log("Go to the page that called the deeplink");
+        if(caller){
+          // console.log(tagID, localMachineName, localMachineManualURL, localMachineServiceRecord);
+          const cleanCaller = caller.toString().split('?')[0];
+          const url = `${cleanCaller}?tagid=${tagID}&name=${localMachineName}&url=${localMachineManualURL}&srecord=${localMachineServiceRecord}`;
+          // console.log("URL", url);
+          if (Platform.OS === "android") {
+            Linking.openURL(`googlechrome://navigate?url=${url}`);
+          } else {
+            Linking.openURL(url);
+          }
+          router.replace('/');
+        }
       }
     }
   }, [nfcTagData]);
 
   useEffect(() => {
-    // console.log("NFCTagScan mounted");
+    console.log("NFCTagScan mounted", caller);
     readNFC();
   }, []);
   
   return (
-    <Portal>
-      <Modal
-        visible={visible}
-        onDismiss={() => {
-          hideModal();
-          renderComponent(false);
-        }}
-        contentContainerStyle={styles.modalStyle}>
+    <SafeAreaProvider>
+      <SafeAreaView style={styles.background}>
+      <StatusBar
+        barStyle={statusBarStyle}
+      />
+      <Appbar.Header>
+          <Appbar.Content title="Scan NFC Tag" titleStyle={styles.appBar} />
+      </Appbar.Header>
           {tagRead === false ?
             (noNFCAvailable === true?
               <Card style={styles.noNFC}>
               <Card.Content>
-                <Text variant="titleMedium" style = { styles.headerText }>No NFC. Please enable and tap icon on home screen again</Text>
+                <Text variant="titleMedium" style = { styles.headerText }>No NFC. Please enable, close app and try again</Text>
               </Card.Content>
             </Card>:  
             <Card style={styles.scanCard}>
@@ -175,70 +202,38 @@ const NFCTagScan = ({ visible, hideModal, renderComponent, homePageRefresh }: { 
               </Card>
           }
         <View style={styles.buttonsContainer}>
-          <IconButton
-            icon="cancel" 
+          <Button
+            icon="home"
             mode='contained'
-            iconColor={MD3DarkTheme.colors.surface}
-            containerColor={MD3DarkTheme.colors.onSurface}
-            size={25}
+            buttonColor={MD3DarkTheme.colors.onSurface}
+            textColor={MD3DarkTheme.colors.surface}
             onPress={() => {
-              console.log(`Cancel`);
-              hideModal();
-              renderComponent(false);
+              console.log(`Going Home`);
+              router.replace('/');
             }}
-          />
-          <IconButton
-            icon="database-plus" 
-            mode='contained'
-            disabled={!tagRead}
-            iconColor={MD3DarkTheme.colors.surface}
-            containerColor={MD3DarkTheme.colors.onSurface}
-            size={25}
-            onPress={() => {
-              console.log(`Save to DB`);
-
-              // create a new NFC tag object
-              const newTagObj:NFCTagDataType = { 
-                id: tagID,
-                machine_name: machineName,
-                manual_url: machineManualURL,
-                service_record: machineSericeRecord,
-              };
-
-              // add just the new tag object to the list
-              storage.set(`${tagID}`, JSON.stringify(newTagObj));
-
-              // close the modal
-              hideModal();
-
-              // refresh the home page
-              homePageRefresh(true);
-
-              // dismount the component
-              renderComponent(false);
-            }}
-          />
+          >
+            Go to Home
+          </Button>
         </View>
-      </Modal>
-    </Portal>
+      </SafeAreaView>
+    </SafeAreaProvider>
   )
 };
 
 const styles = StyleSheet.create({
-  modalStyle: {
-    // flex: 0.6,
-    maxHeight: 1000,
-    justifyContent: 'center',
-    alignItems: 'center',
+  appBar: {
+    textAlign: 'left',
+  },
+  background: {
     backgroundColor: MD3DarkTheme.colors.surface,
-    borderRadius: 4,
-    marginHorizontal: 20,
+    flex: 1,
   },
   headerText: {
     color: MD3DarkTheme.colors.onSurface,
   },
   buttonsContainer: {
     flexDirection: 'row',
+    justifyContent: 'center',
   },
   scanCard: {
     margin: 20,
@@ -250,6 +245,7 @@ const styles = StyleSheet.create({
   },
   dataDisplayCard: {
     marginVertical: 20,
+    marginHorizontal: 20,
     // flex: 1,
     backgroundColor: MD3DarkTheme.colors.surfaceVariant,
   },
@@ -282,4 +278,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default NFCTagScan;
+export default NFCTagScanLink;
