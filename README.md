@@ -7,13 +7,20 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
 1. Install dependencies
 
    ```bash
-   npm install
+   npm install --legacy-peer-deps
    ```
 
-2. Start the app
+2. Start the app:
+
+For the web app:
 
    ```bash
     npx expo start
+   ```
+For Android (after installing the Android Studio, see the link for the development build below):
+   
+   ```bash
+    npx expo run:android
    ```
 
 In the output, you'll find options to open the app in a
